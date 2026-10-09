@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Đua Xe Toán Học - Tách & Gộp Số</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* Base and Reset */
+        * { user-select: none; -webkit-user-select: none; box-sizing: border-box; touch-action: manipulation; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e3a8a, #065f46);
+            margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+        canvas { display: block; image-rendering: -webkit-optimize-contrast; }
+        
+        /* 3D Button Styles */
+        .btn-3d { transition: transform 0.1s ease, box-shadow 0.1s ease; }
+        .btn-3d:active { transform: translateY(4px); }
+        .btn-3d-active-border:active { border-bottom-width: 0px; transform: translateY(4px); margin-bottom: 4px; }
+        
+        /* Input Styles */
+        .kid-input {
+            width: 100%; padding: 12px 16px; border-radius: 16px; border: 3px solid #cbd5e1;
+            font-size: 1.125rem; font-weight: 800; color: #1e293b; outline: none; transition: border-color 0.2s;
+        }
+        .kid-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.3); }
+        
+        /* Animations */
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 10px #facc15); }
+            50% { filter: drop-shadow(0 0 22px #f59e0b); }
+        }
+        .turbo-active { animation: pulseGlow 0.8s infinite; }
+        
+        @keyframes slideInDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-in { animation: slideInDown 0.4s ease-out forwards; }
+    </style>
+</head>
+<body>
+
+    <!-- Main Game Container -->
+    <div id="appContainer" class="relative w-full h-full max-w-5xl max-h-[1024px] bg-slate-900 overflow-hidden shadow-2xl md:rounded-3xl md:border-4 border-emerald-400">
+        
+        <!-- ========================================== -->
+        <!-- SCREEN 1: LOGIN                            -->
+        <!-- ========================================== -->
+        <div id="loginScreen" class="absolute inset-0 bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 z-50 transition-opacity duration-300">
+            <div class="bg-gradient-to-b from-blue-500 to-indigo-700 text-white p-6 md:p-8 rounded-3xl max-w-md w-full border-4 border-blue-300 shadow-2xl text-center animate-slide-in">
+                <div class="text-7xl mb-2 drop-shadow-lg">🏎️</div>
+                <h1 class="text-3xl md:text-4xl font-black text-yellow-300 mb-2 drop-shadow-md">ĐUA XE TOÁN HỌC</h1>
+                <p class="text-blue-100 font-extrabold text-lg mb-6">Tách & Gộp Số - Thử Thách 10 Cấp Độ</p>
+
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <input type="text" id="inpName" class="kid-input text-center" placeholder="Nhập tên của bé..." autocomplete="off">
+                        <p id="errName" class="text-red-300 text-sm font-bold mt-1 hidden">Vui lòng nhập tên!</p>
+                    </div>
+                    <div>
+                        <input type="text" id="inpClass" class="kid-input text-center" placeholder="Nhập lớp (VD: 1A)..." autocomplete="off">
+                        <p id="errClass" class="text-red-300 text-sm font-bold mt-1 hidden">Vui lòng nhập lớp!</p>
+                    </div>
+                </div>
+
+                <div class="bg-white/10 rounded-xl p-4 text-left mb-6 text-sm border border-white/20 space-y-1.5 shadow-inner">
+                    <p class="font-bold">🏁 Có 10 Màn chơi (Mỗi màn 5 câu).</p>
+                    <p class="font-bold">⭐ Mỗi câu đúng được 20 điểm. Tối đa 1000 điểm.</p>
+                    <p class="font-bold">🚗 Dùng <kbd class="px-1.5 bg-black/40 rounded">⬅</kbd> <kbd class="px-1.5 bg-black/40 rounded">➡</kbd> hoặc nút trên màn hình để lái xe.</p>
+                </div>
+
+                <button id="btnStartLogin" class="btn-3d btn-3d-active-border w-full py-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black text-2xl rounded-2xl border-b-4 border-yellow-700 shadow-xl">
+                    VÀO GAME NÀO! 🚀
+                </button>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SCREEN 2: GAMEPLAY UI                      -->
+        <!-- ========================================== -->
+        <canvas id="gameCanvas" class="w-full h-full absolute inset-0"></canvas>
+
+        <div id="gameUI" class="absolute inset-0 pointer-events-none hidden">
+            <!-- TOP BAR -->
+            <div class="absolute top-2 left-2 right-2 flex items-center justify-between z-10 px-1 md:px-2">
+                <!-- Level Indicator -->
+                <div class="pointer-events-auto flex flex-col items-center justify-center bg-white/95 px-3 py-1 rounded-xl shadow-md border-2 border-emerald-500">
+                    <span class="text-[10px] font-black text-emerald-800 uppercase tracking-wide">Màn Chơi</span>
+                    <span class="font-black text-emerald-600 text-lg leading-tight"><span id="uiLevel">1</span>/10</span>
+                </div>
+
+                <!-- Controls & Score -->
+                <div class="pointer-events-auto flex items-center gap-1.5 md:gap-2">
+                    <button id="btnSpeak" title="Đọc lại câu hỏi" class="btn-3d btn-3d-active-border w-10 h-10 md:w-11 md:h-11 bg-amber-400 hover:bg-amber-300 text-amber-950 font-black rounded-xl flex items-center justify-center text-lg md:text-xl border-b-4 border-amber-600 shadow-md">
+                        🔊
+                    </button>
+                    <button id="btnSoundToggle" title="Bật/Tắt âm thanh" class="btn-3d btn-3d-active-border w-10 h-10 md:w-11 md:h-11 bg-cyan-500 hover:bg-cyan-400 text-white font-black rounded-xl flex items-center justify-center text-lg md:text-xl border-b-4 border-cyan-700 shadow-md">
+                        🔔
+                    </button>
+                    <div class="bg-yellow-400 text-yellow-950 px-3 py-1.5 rounded-xl font-black text-base md:text-lg shadow-md border-b-4 border-amber-600 flex items-center gap-1 min-w-[80px] justify-center">
+                        <span>⭐</span> <span id="uiScore">0</span>
+                    </div>
+                    <button id="btnEndGame" class="btn-3d btn-3d-active-border bg-red-600 hover:bg-red-500 text-white font-black px-3 py-1.5 rounded-xl border-b-4 border-red-800 shadow-md flex items-center gap-1 text-sm md:text-base">
+                        ⏹ <span class="hidden md:inline">Kết thúc</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- PROGRESS BAR -->
+            <div class="absolute top-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none z-10 bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/20">
+                <div class="flex gap-1.5" id="progressDots">
+                    <!-- Dots injected via JS -->
+                </div>
+            </div>
+
+            <!-- SPEED SELECTOR -->
+            <div class="absolute top-24 right-3 pointer-events-auto flex flex-col gap-1.5 bg-black/40 backdrop-blur-sm p-1.5 rounded-2xl border border-white/20 z-10 shadow-lg">
+                <span class="text-[10px] text-center font-bold text-white tracking-tight uppercase">Tốc độ</span>
+                <button id="speedSlow" data-speed="1.2" class="speed-btn btn-3d px-2.5 py-1 text-xs font-black rounded-xl bg-emerald-500 text-white shadow-sm ring-2 ring-white">🐢 Rùa</button>
+                <button id="speedMed" data-speed="2.2" class="speed-btn btn-3d px-2.5 py-1 text-xs font-black rounded-xl bg-amber-500 text-white shadow-sm">🐇 Thỏ</button>
+                <button id="speedFast" data-speed="3.5" class="speed-btn btn-3d px-2.5 py-1 text-xs font-black rounded-xl bg-rose-500 text-white shadow-sm">🐆 Báo</button>
+            </div>
+
+            <!-- BOTTOM CONTROLS -->
+            <div class="absolute bottom-4 left-2 right-2 flex items-center justify-between gap-2 md:gap-4 pointer-events-none z-10">
+                <button id="btnSteerLeft" class="pointer-events-auto btn-3d btn-3d-active-border flex-1 max-w-[140px] h-16 md:h-20 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl md:text-3xl rounded-2xl border-b-4 border-blue-900 shadow-xl flex items-center justify-center">
+                    ◀ TRÁI
+                </button>
+                <button id="btnTurbo" class="pointer-events-auto btn-3d btn-3d-active-border flex-1 max-w-[220px] h-16 md:h-20 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-400 text-amber-950 font-black text-lg md:text-2xl rounded-full border-b-4 border-yellow-600 shadow-2xl flex items-center justify-center gap-1">
+                    <span class="text-2xl md:text-3xl">⚡</span> TĂNG TỐC
+                </button>
+                <button id="btnSteerRight" class="pointer-events-auto btn-3d btn-3d-active-border flex-1 max-w-[140px] h-16 md:h-20 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl md:text-3xl rounded-2xl border-b-4 border-blue-900 shadow-xl flex items-center justify-center">
+                    PHẢI ▶
+                </button>
+            </div>
+
+            <!-- TOAST FEEDBACK -->
+            <div id="toastMessage" class="absolute top-44 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 transition-all duration-300 z-20">
+                <div id="toastContent" class="px-6 py-2 rounded-full font-black text-xl shadow-2xl flex items-center gap-2 border-2"></div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SCREEN 3: SUMMARY / END GAME               -->
+        <!-- ========================================== -->
+        <div id="summaryScreen" class="absolute inset-0 bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 z-40 transition-opacity duration-300 hidden opacity-0">
+            <div class="bg-gradient-to-b from-blue-700 to-indigo-900 text-white p-6 md:p-8 rounded-3xl max-w-sm w-full border-4 border-indigo-400 shadow-2xl text-center">
+                
+                <h2 class="text-3xl md:text-4xl font-black text-yellow-300 mb-2 drop-shadow-md">TỔNG KẾT</h2>
+                <div class="text-indigo-200 font-bold mb-4" id="sumStudentInfo">Học sinh: ... | Lớp: ...</div>
+                
+                <div class="bg-white/10 rounded-2xl p-5 mb-5 border border-white/20 shadow-inner">
+                    <div class="text-emerald-300 font-bold text-lg mb-1 uppercase tracking-wider">Tổng điểm của bé</div>
+                    <div class="text-7xl font-black text-yellow-400 mb-2 shadow-black drop-shadow-lg" id="sumScore">0</div>
+                    <div class="text-sm font-bold text-indigo-100 bg-black/30 py-1.5 rounded-lg mt-3">
+                        Vượt qua: <span id="sumLevel" class="text-white">1</span>/10 Màn
+                    </div>
+                </div>
+
+                <div id="submitStatus" class="text-sm font-bold text-emerald-400 mb-3 h-5"></div>
+
+                <button id="btnSubmitScore" class="btn-3d btn-3d-active-border w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-lg md:text-xl rounded-2xl border-b-4 border-emerald-700 shadow-xl mb-3 flex items-center justify-center gap-2">
+                    📤 Gửi kết quả cho Cô giáo
+                </button>
+                <button id="btnRestartGame" class="btn-3d btn-3d-active-border w-full py-3 bg-slate-600 hover:bg-slate-500 text-white font-bold text-lg rounded-2xl border-b-4 border-slate-800 shadow-md">
+                    🔄 Chơi lại từ đầu
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * GOOGLE WEBHOOK URL FOR SUBMITTING SCORES
+         * Đã tích hợp link của bạn!
+         */
+        const GOOGLE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw32_FG14oR7jIsUW3mP0SJmT6mambGsMj9Vxe0ych8aX1q4NU-fVHGG5P_btokuams6w/exec";
+
+        // --- Game State & Data ---
+        let gameState = 'LOGIN'; 
+        let player = { name: '', class: '' };
+        
+        let score = 0;
+        let currentLevel = 1;
+        let questionsAnsweredInLevel = 0;
+        
+        const MAX_LEVEL = 10;
+        const QUESTIONS_PER_LEVEL = 5;
+        const POINTS_PER_Q = 20;
+
+        let baseSpeed = 1.2;
+        let isTurbo = false;
+        let turboTimer = 0;
+
+        // --- Audio Engine ---
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            if (!soundEnabled || !audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            if (type === 'ting') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1046.5, now); 
+                osc.frequency.exponentialRampToValueAtTime(2093, now + 0.1); 
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.8);
+            } else if (type === 'boing') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(250, now);
+                osc.frequency.exponentialRampToValueAtTime(120, now + 0.3);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'turbo') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(400, now + 0.3);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.36);
+            }
+        }
+
+        function speak(text) {
+            if (!soundEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'vi-VN';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.2;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const viVoice = voices.find(v => v.lang.includes('vi'));
+            if (viVoice) utterance.voice = viVoice;
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- Math Generation Engine ---
+        let currentQ = {
+            mode: 'TACH', topVal: 9, leftVal: 2, rightVal: 7, missing: 'RIGHT',
+            questionText: "Tách 9 gồm 2 và ?", speechPrompt: "Tách 9 gồm 2 và mấy?",
+            correctAns: 7, wrongAns: 6, correctLane: 0
+        };
+
+        function generateQuestion() {
+            let maxSum = Math.min(4 + Math.ceil(currentLevel * 1.6), 20);
+            
+            const mode = Math.random() < 0.5 ? 'TACH' : 'GOP';
+            let top, left, right, ans, wrong;
+            let missingPos = 'RIGHT';
+
+            if (mode === 'TACH') {
+                top = Math.floor(Math.random() * (maxSum - 2)) + 3; 
+                left = Math.floor(Math.random() * (top - 1)) + 1;
+                right = top - left;
+
+                if (Math.random() > 0.5) {
+                    missingPos = 'RIGHT'; ans = right;
+                    currentQ.questionText = `Tách ${top} gồm ${left} và ?`;
+                    currentQ.speechPrompt = `Tách ${top} gồm ${left} và mấy?`;
+                } else {
+                    missingPos = 'LEFT'; ans = left;
+                    currentQ.questionText = `Tách ${top} gồm ? và ${right}`;
+                    currentQ.speechPrompt = `Tách ${top} gồm mấy và ${right}?`;
+                }
+            } else { 
+                left = Math.floor(Math.random() * (maxSum - 1)) + 1;
+                right = Math.floor(Math.random() * (maxSum - left)) + 1;
+                top = left + right;
+
+                missingPos = 'TOP'; ans = top;
+                currentQ.questionText = `Gộp ${left} và ${right} được ?`;
+                currentQ.speechPrompt = `Gộp ${left} và ${right} được mấy?`;
+            }
+
+            const offsets = [-2, -1, 1, 2];
+            wrong = ans + offsets[Math.floor(Math.random() * offsets.length)];
+            if (wrong <= 0 || wrong === ans) wrong = ans === 1 ? 2 : ans - 1;
+
+            currentQ.topVal = top; currentQ.leftVal = left; currentQ.rightVal = right;
+            currentQ.missing = missingPos; currentQ.correctAns = ans; currentQ.wrongAns = wrong;
+            currentQ.correctLane = Math.random() < 0.5 ? 0 : 1; 
+
+            gate.distance = 1.0;
+            gate.passed = false;
+            
+            updateUI();
+            setTimeout(() => speak(currentQ.speechPrompt), 500); 
+        }
+
+        function updateUI() {
+            document.getElementById('uiLevel').innerText = currentLevel;
+            document.getElementById('uiScore').innerText = score;
+            
+            const dotsContainer = document.getElementById('progressDots');
+            dotsContainer.innerHTML = '';
+            for(let i=0; i<QUESTIONS_PER_LEVEL; i++) {
+                const dot = document.createElement('div');
+                dot.className = `w-3 h-3 rounded-full border-2 transition-all duration-300 ${i < questionsAnsweredInLevel ? 'bg-yellow-400 border-yellow-200 scale-110 shadow-[0_0_8px_#facc15]' : 'bg-black/50 border-white/30'}`;
+                dotsContainer.appendChild(dot);
+            }
+        }
+
+        // --- Rendering Engine (Canvas 3D) ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const car = { targetLane: 0, currentLanePos: 0, recoilY: 0, turnTilt: 0, bumpPhase: 0 };
+        const gate = { distance: 1.0, passed: false };
+        let roadScroll = 0;
+        const confetti = [];
+        
+        const trees = [
+            { x: -1.8, z: 0.1, type: 0 }, { x: 1.7, z: 0.25, type: 1 },
+            { x: -1.9, z: 0.45, type: 1 }, { x: 1.85, z: 0.65, type: 0 },
+            { x: -1.75, z: 0.85, type: 0 }, { x: 1.9, z: 0.95, type: 1 }
+        ];
+
+        function resize() {
+            const container = document.getElementById('appContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resize);
+
+        function drawScene() {
+            const W = canvas.width, H = canvas.height;
+            const vpX = W * 0.5, vpY = H * 0.45; 
+
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, vpY);
+            skyGrad.addColorStop(0, '#38bdf8'); skyGrad.addColorStop(1, '#e0f2fe');
+            ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, W, vpY);
+
+            const sunX = W * 0.85, sunY = vpY * 0.7;
+            const sunGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 100);
+            sunGrad.addColorStop(0, '#fef08a'); sunGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = sunGrad; ctx.beginPath(); ctx.arc(sunX, sunY, 100, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath(); ctx.moveTo(0, vpY); ctx.quadraticCurveTo(W*0.25, vpY-60, W*0.5, vpY-10); ctx.quadraticCurveTo(W*0.75, vpY-80, W, vpY); ctx.fill();
+            ctx.fillStyle = '#059669';
+            ctx.beginPath(); ctx.moveTo(0, vpY); ctx.quadraticCurveTo(W*0.35, vpY-30, W*0.65, vpY-45); ctx.quadraticCurveTo(W*0.85, vpY-15, W, vpY); ctx.fill();
+
+            ctx.fillStyle = '#22c55e'; ctx.fillRect(0, vpY, W, H - vpY);
+
+            const topW = W * 0.05, botW = W * 0.85;
+            ctx.fillStyle = '#334155';
+            ctx.beginPath(); 
+            ctx.moveTo(vpX - topW/2, vpY); ctx.lineTo(vpX + topW/2, vpY);
+            ctx.lineTo(vpX + botW/2, H); ctx.lineTo(vpX - botW/2, H); 
+            ctx.fill();
+
+            drawCurbsAndLines(vpX, vpY, topW, botW, H);
+            drawTrees(vpX, vpY, H, botW);
+        }
+
+        function drawCurbsAndLines(vpX, vpY, topW, botW, bottomY) {
+            const segments = 15;
+            for (let i = 0; i < segments; i++) {
+                const z1 = ((i + (roadScroll % 1)) / segments), z2 = ((i + 1 + (roadScroll % 1)) / segments);
+                if (z1 >= 1.0) continue;
+                
+                const y1 = vpY + (bottomY - vpY) * Math.pow(z1, 1.8), y2 = vpY + (bottomY - vpY) * Math.pow(Math.min(1.0, z2), 1.8);
+                const rw1 = topW + (botW - topW) * Math.pow(z1, 1.8), rw2 = topW + (botW - topW) * Math.pow(Math.min(1.0, z2), 1.8);
+                const cw1 = 2 + 25 * z1, cw2 = 2 + 25 * z2;
+                
+                ctx.fillStyle = ((i + Math.floor(roadScroll)) % 2 === 0) ? '#ef4444' : '#ffffff';
+                ctx.beginPath(); ctx.moveTo(vpX - rw1/2 - cw1, y1); ctx.lineTo(vpX - rw1/2, y1); ctx.lineTo(vpX - rw2/2, y2); ctx.lineTo(vpX - rw2/2 - cw2, y2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(vpX + rw1/2, y1); ctx.lineTo(vpX + rw1/2 + cw1, y1); ctx.lineTo(vpX + rw2/2 + cw2, y2); ctx.lineTo(vpX + rw2/2, y2); ctx.fill();
+                
+                if (i % 2 === 0) {
+                    ctx.fillStyle = '#facc15';
+                    const dw1 = 1.5 + 8 * z1, dw2 = 1.5 + 8 * z2;
+                    ctx.beginPath(); ctx.moveTo(vpX - dw1/2, y1); ctx.lineTo(vpX + dw1/2, y1); ctx.lineTo(vpX + dw2/2, y2); ctx.lineTo(vpX - dw2/2, y2); ctx.fill();
+                }
+            }
+        }
+
+        function drawTrees(vpX, vpY, bottomY, botW) {
+            trees.forEach(t => {
+                let z = (t.z + (roadScroll * 0.04)) % 1.0;
+                let depth = Math.pow(z, 2.0);
+                let y = vpY + (bottomY - vpY) * depth;
+                let x = vpX + (t.x * (botW * 0.5) * 1.2 * depth);
+                let size = 10 + 60 * depth;
+
+                ctx.save(); ctx.translate(x, y);
+                ctx.fillStyle = '#78350f'; ctx.fillRect(-size*0.1, 0, size*0.2, size*0.6); 
+                ctx.fillStyle = t.type === 0 ? '#15803d' : '#16a34a';
+                ctx.beginPath(); ctx.arc(0, -size*0.3, size*0.5, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath(); ctx.arc(-size*0.15, -size*0.4, size*0.3, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function drawMathSign() {
+            const W = canvas.width;
+            const boardW = Math.min(W * 0.9, 600);
+            const boardH = 180;
+            const x = (W - boardW) / 2, y = 65; 
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 8;
+            ctx.fillStyle = '#064e3b'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.roundRect(x, y, boardW, boardH, 24); ctx.fill(); ctx.stroke();
+            ctx.restore();
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(x+6, y+6, boardW-12, boardH-12, 20); ctx.stroke();
+
+            const cX = W/2, topY = y + 55, botY = y + 105, spread = 65;
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(cX, topY); ctx.lineTo(cX - spread, botY); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cX, topY); ctx.lineTo(cX + spread, botY); ctx.stroke();
+
+            drawNode(cX, topY, currentQ.missing === 'TOP' ? '?' : currentQ.topVal, currentQ.missing === 'TOP');
+            drawNode(cX - spread, botY, currentQ.missing === 'LEFT' ? '?' : currentQ.leftVal, currentQ.missing === 'LEFT');
+            drawNode(cX + spread, botY, currentQ.missing === 'RIGHT' ? '?' : currentQ.rightVal, currentQ.missing === 'RIGHT');
+
+            ctx.fillStyle = '#ffffff'; ctx.font = '900 22px "Nunito"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            const parts = currentQ.questionText.split('?');
+            if (parts.length > 1) {
+                const w = ctx.measureText(parts[0]).width;
+                ctx.fillText(parts[0], cX - 8, y + 155);
+                ctx.fillStyle = '#facc15'; ctx.font = '900 28px "Nunito"';
+                ctx.fillText('?', cX - 8 + w/2 + 12, y + 155);
+            } else {
+                ctx.fillText(currentQ.questionText, cX, y + 155);
+            }
+        }
+
+        function drawNode(x, y, value, isMissing) {
+            ctx.save();
+            ctx.fillStyle = isMissing ? '#022c22' : '#047857';
+            ctx.strokeStyle = isMissing ? '#facc15' : '#ffffff'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            
+            ctx.fillStyle = isMissing ? '#facc15' : '#ffffff';
+            ctx.font = isMissing ? '900 28px "Nunito"' : '900 22px "Nunito"';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(value, x, y+2);
+            ctx.restore();
+        }
+
+        function drawGates() {
+            const z = 1.0 - gate.distance; 
+            if (z < 0.01 || z > 1.1) return;
+            const W = canvas.width, H = canvas.height, vpX = W * 0.5, vpY = H * 0.45;
+            const depth = Math.pow(z, 2.0); 
+            
+            const gateY = vpY + (H * 0.75 - vpY) * depth;
+            const roadW = (W * 0.05) + (W * 0.85 - W * 0.05) * depth;
+            const laneOffset = roadW * 0.25;
+            const scale = 0.15 + 1.2 * depth;
+
+            drawSingleGate(vpX - laneOffset, gateY, currentQ.correctLane === 0 ? currentQ.correctAns : currentQ.wrongAns, scale);
+            drawSingleGate(vpX + laneOffset, gateY, currentQ.correctLane === 1 ? currentQ.correctAns : currentQ.wrongAns, scale);
+        }
+
+        function drawSingleGate(x, y, value, scale) {
+            ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+            
+            ctx.fillStyle = '#94a3b8'; ctx.fillRect(-35, -20, 8, 90); ctx.fillRect(27, -20, 8, 90); 
+            
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+            ctx.fillStyle = '#059669'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.roundRect(-45, -80, 90, 70, 12); ctx.fill(); ctx.stroke();
+            
+            ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff'; ctx.font = '900 46px "Nunito"';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(value, 0, -42);
+            ctx.restore();
+        }
+
+        function drawCar() {
+            const W = canvas.width, H = canvas.height;
+            const carY = H * 0.82 + car.recoilY;
+            const laneOffset = (W * 0.85) * 0.25; 
+            const carX = W/2 + (car.currentLanePos * laneOffset);
+
+            ctx.save(); 
+            ctx.translate(carX, carY);
+            ctx.rotate(car.turnTilt * 0.1); 
+            ctx.translate(0, Math.sin(car.bumpPhase)*2);
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 42, 60, 16, 0, 0, Math.PI*2); ctx.fill();
+            
+            ctx.fillStyle = '#0f172a'; 
+            ctx.beginPath(); ctx.roundRect(-60, 8, 22, 38, 6); ctx.roundRect(38, 8, 22, 38, 6); ctx.fill();
+            
+            const grad = ctx.createLinearGradient(0, -60, 0, 30); grad.addColorStop(0, '#ef4444'); grad.addColorStop(1, '#991b1b');
+            ctx.fillStyle = grad; ctx.strokeStyle = '#7f1d1d'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.roundRect(-52, -12, 104, 52, 14); ctx.fill(); ctx.stroke();
+            
+            ctx.beginPath(); ctx.roundRect(-38, -65, 76, 55, 12); ctx.fill(); ctx.stroke();
+            
+            ctx.fillStyle = '#7dd3fc'; ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(-30, -55, 60, 32, 8); ctx.fill(); ctx.stroke();
+            
+            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.roundRect(-26, 16, 52, 18, 4); ctx.fill();
+            ctx.fillStyle = '#0f172a'; ctx.font = '900 11px "Nunito"'; ctx.textAlign='center'; ctx.textBaseline='middle'; 
+            ctx.fillText('TOÁN 1', 0, 26);
+            
+            ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.roundRect(-46, 6, 14, 12, 4); ctx.roundRect(32, 6, 14, 12, 4); ctx.fill();
+            
+            if (isTurbo) {
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath(); ctx.moveTo(-18, 40); ctx.lineTo(-24, 40 + Math.random()*30+20); ctx.lineTo(-12, 40); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(18, 40); ctx.lineTo(24, 40 + Math.random()*30+20); ctx.lineTo(12, 40); ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // --- Logic & Game Loop ---
+
+        function checkCollision() {
+            if (gate.passed) return;
+            if (gate.distance <= 0.15) {
+                gate.passed = true;
+                
+                const playerLane = car.currentLanePos < 0 ? 0 : 1;
+                const isCorrect = playerLane === currentQ.correctLane;
+
+                if (isCorrect) {
+                    handleCorrect();
+                } else {
+                    handleWrong();
+                }
+            }
+        }
+
+        function handleCorrect() {
+            gameState = 'SUCCESS';
+            score += POINTS_PER_Q;
+            questionsAnsweredInLevel++;
+            updateUI();
+            
+            playSound('ting'); speak('Bé giỏi quá!');
+            showToast('🎉 Bé giỏi quá!', 'bg-emerald-500 text-white border-emerald-300');
+            spawnConfetti();
+
+            setTimeout(() => {
+                if (questionsAnsweredInLevel >= QUESTIONS_PER_LEVEL) {
+                    if (currentLevel >= MAX_LEVEL) {
+                        endGame();
+                    } else {
+                        currentLevel++;
+                        questionsAnsweredInLevel = 0;
+                        showToast(`🚀 Lên Màn ${currentLevel}!`, 'bg-blue-500 text-white border-blue-300');
+                        setTimeout(() => { generateQuestion(); gameState = 'RUNNING'; }, 1500);
+                    }
+                } else {
+                    generateQuestion();
+                    gameState = 'RUNNING';
+                }
+            }, 2200);
+        }
+
+        function handleWrong() {
+            gameState = 'RETRY';
+            playSound('boing'); speak('Bé chọn lại nhé!');
+            showToast('💡 Bé chọn lại nhé!', 'bg-rose-500 text-white border-rose-300');
+            
+            car.recoilY = 40;
+            
+            setTimeout(() => {
+                gate.distance = 0.85; 
+                gate.passed = false;
+                gameState = 'RUNNING';
+                speak(currentQ.speechPrompt);
+            }, 1800);
+        }
+
+        function spawnConfetti() {
+            const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899'];
+            for (let i = 0; i < 80; i++) {
+                confetti.push({
+                    x: canvas.width/2 + (Math.random()-0.5)*200, y: canvas.height*0.5,
+                    vx: (Math.random()-0.5)*12, vy: -Math.random()*15 - 5,
+                    color: colors[Math.floor(Math.random()*colors.length)],
+                    size: Math.random()*10+5, rot: Math.random()*Math.PI, vRot: (Math.random()-0.5)*0.3, alpha: 1.0
+                });
+            }
+        }
+
+        function drawConfetti() {
+            for (let i = confetti.length - 1; i >= 0; i--) {
+                const p = confetti.push ? confetti[i] : null;
+                if(!p) continue;
+                p.x += p.vx; p.y += p.vy; p.vy += 0.4; 
+                p.rot += p.vRot; p.alpha -= 0.01;
+                
+                ctx.save(); ctx.globalAlpha = Math.max(0, p.alpha); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+                ctx.fillStyle = p.color; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.7); ctx.restore();
+                
+                if (p.alpha <= 0) confetti.splice(i, 1);
+            }
+        }
+
+        function showToast(text, colorClasses) {
+            const t = document.getElementById('toastMessage');
+            const c = document.getElementById('toastContent');
+            c.className = `px-7 py-3 rounded-full font-black text-xl md:text-2xl shadow-2xl flex items-center gap-2 border-2 ${colorClasses}`;
+            c.innerText = text;
+            t.style.opacity = '1'; t.style.transform = 'translate(-50%, -10px) scale(1.05)';
+            setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 0) scale(1.0)'; }, 1800);
+        }
+
+        function steer(dir) { car.targetLane = dir; }
+        
+        function applyTurbo() {
+            if (isTurbo || gameState !== 'RUNNING') return;
+            isTurbo = true; turboTimer = 60;
+            playSound('turbo');
+            document.getElementById('btnTurbo').classList.add('turbo-active');
+        }
+
+        function gameLoop() {
+            const diff = car.targetLane - car.currentLanePos;
+            car.currentLanePos += diff * 0.15;
+            car.turnTilt = diff; 
+            if (car.recoilY > 0) car.recoilY = Math.max(0, car.recoilY - 2);
+            car.bumpPhase += (isTurbo ? 0.4 : 0.2);
+
+            let speed = baseSpeed;
+            if (isTurbo) {
+                speed *= 1.8; turboTimer--;
+                if (turboTimer <= 0) { isTurbo = false; document.getElementById('btnTurbo').classList.remove('turbo-active'); }
+            }
+
+            if (gameState === 'RUNNING') {
+                roadScroll += speed * 0.1;
+                gate.distance -= (speed * 0.002);
+                checkCollision();
+            } else if (gameState === 'SUCCESS') {
+                roadScroll += speed * 0.2; 
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawScene();
+            drawGates();
+            drawCar();
+            drawMathSign();
+            drawConfetti();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- UI & Event Listeners ---
+        
+        document.getElementById('btnStartLogin').addEventListener('click', () => {
+            const n = document.getElementById('inpName').value.trim();
+            const c = document.getElementById('inpClass').value.trim();
+            let valid = true;
+            
+            if(!n) { document.getElementById('errName').classList.remove('hidden'); valid = false; }
+            else { document.getElementById('errName').classList.add('hidden'); }
+            
+            if(!c) { document.getElementById('errClass').classList.remove('hidden'); valid = false; }
+            else { document.getElementById('errClass').classList.add('hidden'); }
+
+            if (valid) {
+                player.name = n; player.class = c;
+                initAudio(); resize();
+                
+                document.getElementById('loginScreen').classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => {
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('gameUI').classList.remove('hidden');
+                    
+                    score = 0; currentLevel = 1; questionsAnsweredInLevel = 0;
+                    car.targetLane = -1; car.currentLanePos = -1;
+                    
+                    generateQuestion();
+                    gameState = 'RUNNING';
+                    gameLoop();
+                }, 300);
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'RUNNING') return;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') steer(-1);
+            else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') steer(1);
+            else if (e.key === ' ' || e.key === 'ArrowUp') applyTurbo();
+        });
+
+        document.getElementById('btnSteerLeft').addEventListener('pointerdown', () => steer(-1));
+        document.getElementById('btnSteerRight').addEventListener('pointerdown', () => steer(1));
+        document.getElementById('btnTurbo').addEventListener('pointerdown', applyTurbo);
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (gameState !== 'RUNNING') return;
+            const rect = canvas.getBoundingClientRect();
+            if (e.clientX - rect.left < rect.width * 0.45) steer(-1);
+            else if (e.clientX - rect.left > rect.width * 0.55) steer(1);
+        });
+
+        document.getElementById('btnSpeak').addEventListener('click', () => speak(currentQ.speechPrompt));
+        
+        document.getElementById('btnSoundToggle').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('btnSoundToggle');
+            btn.innerText = soundEnabled ? '🔔' : '🔕';
+            btn.className = `btn-3d btn-3d-active-border w-10 h-10 md:w-11 md:h-11 ${soundEnabled ? 'bg-cyan-500 hover:bg-cyan-400 border-cyan-700' : 'bg-gray-500 hover:bg-gray-400 border-gray-700'} text-white font-black rounded-xl flex items-center justify-center text-lg md:text-xl border-b-4 shadow-md`;
+            if (!soundEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+        });
+
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('ring-2', 'ring-white'));
+                btn.classList.add('ring-2', 'ring-white');
+                baseSpeed = parseFloat(btn.dataset.speed);
+            });
+        });
+
+        document.getElementById('btnEndGame').addEventListener('click', endGame);
+
+        function endGame() {
+            gameState = 'SUMMARY';
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            
+            document.getElementById('gameUI').classList.add('hidden');
+            const summary = document.getElementById('summaryScreen');
+            summary.classList.remove('hidden');
+            
+            void summary.offsetWidth;
+            summary.classList.remove('opacity-0');
+
+            document.getElementById('sumStudentInfo').innerText = `Học sinh: ${player.name} | Lớp: ${player.class}`;
+            document.getElementById('sumScore').innerText = score;
+            document.getElementById('sumLevel').innerText = currentLevel;
+            document.getElementById('submitStatus').innerText = '';
+            document.getElementById('btnSubmitScore').disabled = false;
+            document.getElementById('btnSubmitScore').style.opacity = '1';
+            
+            if(score > 0) playSound('ting');
+        }
+
+        document.getElementById('btnSubmitScore').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSubmitScore');
+            const status = document.getElementById('submitStatus');
+            
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            status.innerText = '⏳ Đang gửi kết quả...';
+            status.className = "text-sm font-bold text-yellow-400 mb-3 h-5";
+
+            const data = {
+                hoTen: player.name,
+                lop: player.class,
+                diem: score,
+                capDo: currentLevel
+            };
+
+            try {
+                await fetch(GOOGLE_WEBHOOK_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                status.innerText = '✅ Đã gửi kết quả cho Cô giáo!';
+                status.className = "text-sm font-bold text-emerald-400 mb-3 h-5";
+            } catch (error) {
+                console.warn("Lỗi gửi điểm:", error);
+                status.innerText = '⚠️ Đã gửi kết quả, hoặc có lỗi mạng!';
+                status.className = "text-sm font-bold text-rose-400 mb-3 h-5";
+            }
+        });
+
+        document.getElementById('btnRestartGame').addEventListener('click', () => {
+            document.getElementById('summaryScreen').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('summaryScreen').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('loginScreen').classList.remove('opacity-0');
+                
+                gameState = 'LOGIN';
+            }, 300);
+        });
+
+        resize();
+    </script>
+</body>
+</html>
